@@ -136,15 +136,31 @@ class WikiPageRepository:
         print("NEW REDIRECT")
         print(redirect)
 
-    def replace_redirect(self, redirect: Redirect, timestamp: datetime):
+    def replace_redirect(self, redirect: Redirect, target: Page, timestamp: datetime):
         connection = self._connection
         cursor = connection.cursor()
-        # TODO
-        # cursor.execute("""INSERT INTO redirect .....""")
-        # cursor.execute(f"""UPDATE redirect SET effective_to='{timestamp}' WHERE .....""")
-        # connection.commit()
+        # TODO implement a get_insert_redirect function so that only defined once??
+        cursor.execute(
+            """INSERT INTO redirect (page_id, page_title, page_type, root_title, root_namespace, root_page_id, effective_from, batch_timestamp)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                redirect.from_id,
+                redirect.from_title,
+                "redirect",
+                target.title,
+                target.namespace,
+                target.page_id,
+                timestamp,
+                timestamp,
+            ),
+        )
+        cursor.execute(
+            f"""UPDATE redirect SET effective_to=%s WHERE page_id=%s AND batch_timestamp IS NULL;""",
+            (timestamp, redirect.from_id),
+        )
+        connection.commit()
         print("REPLACE REDIRECT")
-        # print(redirect, timestamp)
+        print(redirect, timestamp)
 
     def update_batch_timestamp(self, redirect: Redirect, timestamp: datetime):
         connection = self._connection
@@ -228,12 +244,13 @@ class WikiRedirectProcessor:
                 )
             else:
                 self._persistent_wiki_repository.replace_redirect(
-                    redirect, self._batch_timestamp
+                    redirect, target, self._batch_timestamp
                 )
         else:
             self._persistent_wiki_repository.add_redirect(
                 redirect, target, self._batch_timestamp
             )
+
 
 staging_repo = WikiPageRepository("localhost", "staging")
 persistent_repo = WikiPageRepository("localhost", "persistent")
