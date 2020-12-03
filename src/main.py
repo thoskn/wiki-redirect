@@ -155,7 +155,8 @@ class WikiPageRepository:
             ),
         )
         cursor.execute(
-            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s WHERE page_id=%s AND batch_timestamp IS NULL;""",
+            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s 
+                    WHERE page_id=%s AND batch_timestamp IS NULL;""",
             (timestamp, timestamp, redirect.from_id),
         )
         connection.commit()
@@ -166,7 +167,8 @@ class WikiPageRepository:
         connection = self._connection
         cursor = connection.cursor()
         cursor.execute(
-            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s WHERE page_id=%s AND batch_timestamp IS NOT NULL;""",
+            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s 
+                    WHERE page_id=%s AND batch_timestamp IS NOT NULL;""",
             (timestamp, timestamp, redirect.from_id),
         )
         connection.commit()
@@ -176,11 +178,11 @@ class WikiPageRepository:
     def expire_old_redirects(self, timestamp: datetime):
         connection = self._connection
         cursor = connection.cursor()
-        # TODO
-        # cursor.execute(
-        #     f"""UPDATE redirect SET effective_to='{timestamp}' WHERE batch_timestamp != '{timestamp}'"""
-        # )
-        # connection.commit()
+        cursor.execute(
+            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s 
+                    WHERE batch_timestamp < %s;""", (timestamp, timestamp, timestamp)
+        )
+        connection.commit()
         print("EXPIRE")
         print(timestamp)
 
