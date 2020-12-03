@@ -3,8 +3,6 @@ from datetime import datetime
 from typing import Generator, Optional
 
 from cachetools import LRUCache, cached
-
-
 import mysql.connector
 
 
@@ -13,16 +11,13 @@ Redirect = namedtuple(
 )
 Page = namedtuple("page", ["page_id", "namespace", "title", "is_redirect"])
 
-# TODO close connection and cursors
-# TODO check ordering of functions on classes
 # TODO split into multiple files
 # TODO check that all gets from the persistent db use a latest timestamp filter
+# TODO doc strings
 
 
 class WikiPageRepository:
-    def __init__(
-        self, host: str, database: str, user: str, password: str
-    ):  # root, pword
+    def __init__(self, host: str, database: str, user: str, password: str):
         self._host = host
         self._database = database
         self._user = user
@@ -82,7 +77,6 @@ class WikiPageRepository:
                 prepared=True
             )
         cursor = self._get_page_prepared_statement_cursor
-        # TODO check whether using the parameters retrieved
         cursor.execute(
             f"""SELECT page_id, page_title, page_namespace, page_is_redirect FROM {self._database}.page
                 WHERE page_namespace=%s AND page_title=%s;""",
@@ -106,7 +100,6 @@ class WikiPageRepository:
                 self._short_connection.cursor(prepared=True)
             )
         cursor = self._get_page_by_id_prepared_statement_cursor
-        # TODO check whether using the parameters retrieved
         cursor.execute(
             f"""SELECT page_id, page_title, page_namespace, page_is_redirect FROM {self._database}.page
                         WHERE page_id=%s;""",
@@ -147,7 +140,6 @@ class WikiPageRepository:
     def replace_redirect(self, redirect: Redirect, target: Page, timestamp: datetime):
         connection = self._short_connection
         cursor = connection.cursor()
-        # TODO implement a get_insert_redirect function so that only defined once??
         cursor.execute(
             """INSERT INTO redirect (page_id, page_title, page_type, root_title, root_namespace, root_page_id, effective_from, batch_timestamp)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -173,9 +165,9 @@ class WikiPageRepository:
         connection = self._short_connection
         cursor = connection.cursor()
         cursor.execute(
-            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s 
+            f"""UPDATE redirect SET batch_timestamp=%s 
                     WHERE page_id=%s AND batch_timestamp IS NOT NULL;""",
-            (timestamp, timestamp, redirect.from_id),
+            (timestamp, redirect.from_id),
         )
         self._short_connection.commit()
 
@@ -194,7 +186,6 @@ class WikiPageRepository:
         cursor = connection.cursor()
         cursor.execute(f"""CREATE DATABASE  IF NOT EXISTS {self._database}""")
         cursor.execute(f"""USE {self._database}""")
-        # cursor.execute("DROP TABLE redirect;")
         cursor.execute(
             """CREATE TABLE IF NOT EXISTS redirect (
                 page_id         INT(8) unsigned NOT NULL,
@@ -215,6 +206,10 @@ class WikiPageRepository:
             host=self._host, user=self._user, password=self._password
         )
         return connection
+
+    def __del__(self):
+        self._short_connection.close()
+        self._long_connection.close()
 
 
 class WikiRedirectProcessor:
