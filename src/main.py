@@ -155,8 +155,8 @@ class WikiPageRepository:
             ),
         )
         cursor.execute(
-            f"""UPDATE redirect SET effective_to=%s WHERE page_id=%s AND batch_timestamp IS NULL;""",
-            (timestamp, redirect.from_id),
+            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s WHERE page_id=%s AND batch_timestamp IS NULL;""",
+            (timestamp, timestamp, redirect.from_id),
         )
         connection.commit()
         print("REPLACE REDIRECT")
@@ -165,9 +165,11 @@ class WikiPageRepository:
     def update_batch_timestamp(self, redirect: Redirect, timestamp: datetime):
         connection = self._connection
         cursor = connection.cursor()
-        # TODO
-        # cursor.execute(f"""UPDATE redirect SET effective_to='{timestamp}' WHERE .....""")
-        # connection.commit()
+        cursor.execute(
+            f"""UPDATE redirect SET effective_to=%s, batch_timestamp=%s WHERE page_id=%s AND batch_timestamp IS NOT NULL;""",
+            (timestamp, timestamp, redirect.from_id),
+        )
+        connection.commit()
         print("UPDATE TIMESTAMP")
         print(redirect, timestamp)
 
